@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import '../models/quiz.dart';
+import '../services/gemini_service.dart';
 import '../services/progress_service.dart';
+import '../services/streak_service.dart';
 import '../widgets/celebration_dialog.dart';
 
 class QuizScreen extends StatefulWidget {
   final Quiz quiz;
   final String seminarioId;
-  const QuizScreen({super.key, required this.quiz, required this.seminarioId});
+  final int totalSecciones;
+  const QuizScreen({
+    super.key,
+    required this.quiz,
+    required this.seminarioId,
+    this.totalSecciones = 1,
+  });
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -15,47 +23,88 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   int _current = 0;
   int _correctas = 0;
+  int _totalScore = 0;
   bool _answered = false;
+  bool _grading = false;
   String? _selected;
+  String? _feedback;
+  int? _lastScore;
   final _textController = TextEditingController();
 
-  void _checkAnswer(String respuesta) {
+  Future<void> _checkAnswer(String respuesta) async {
+    if (_answered || _grading) return;
     final pregunta = widget.quiz.preguntas[_current];
-    final esCorrecta = respuesta.trim().toLowerCase() ==
-        pregunta.respuestaCorrecta.trim().toLowerCase();
-
     setState(() {
-      _answered = true;
-      if (esCorrecta) _correctas++;
+      _grading = true;
+      _selected = respuesta;
     });
 
-    Future.delayed(const Duration(milliseconds: 800), () {
+    try {
+      final grade = await GeminiService.corregirRespuesta(
+        seminarioId: widget.seminarioId,
+        seccionId: widget.quiz.seccionId,
+        quizId: widget.quiz.id,
+        preguntaId: pregunta.id,
+        respuestaUsuario: respuesta,
+      );
+
+      if (!mounted) return;
+      final score = (grade['nota'] as num).round().clamp(0, 100);
+      setState(() {
+        _grading = false;
+        _answered = true;
+        _totalScore += score;
+        _lastScore = score;
+        _feedback = grade['comentario'] as String;
+        if (grade['correcta'] == true) _correctas++;
+      });
+
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
       if (!mounted) return;
       if (_current < widget.quiz.preguntas.length - 1) {
         setState(() {
           _current++;
           _answered = false;
           _selected = null;
+          _feedback = null;
+          _lastScore = null;
           _textController.clear();
         });
       } else {
-        _finish();
+        await _finish();
       }
-    });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _grading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo evaluar la respuesta: $error')),
+      );
+    }
   }
 
-  void _finish() async {
-    final porcentaje = _correctas / widget.quiz.preguntas.length;
-    await ProgressService().setProgress(
-      widget.seminarioId,
-      (await ProgressService().getProgressAsync(widget.seminarioId) + porcentaje * 0.2).clamp(0.0, 1.0),
-    );
+  Future<void> _finish() async {
+    final nota = (_totalScore / widget.quiz.preguntas.length).round();
+    try {
+      final progress = await ProgressService().setSectionCompleted(
+        seminarioId: widget.seminarioId,
+        seccionId: widget.quiz.seccionId,
+        totalSections: widget.totalSecciones,
+        completed: true,
+      );
+      if (mounted && progress >= 1.0) await StreakService().recordActivity();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Quiz corregido, pero no se pudo guardar el resultado: $error')),
+        );
+      }
+    }
 
     if (!mounted) return;
     showCelebration(
       context,
       'Quiz completado',
-      'Respondiste $_correctas de ${widget.quiz.preguntas.length} correctamente.',
+      'Nota: $nota/100. Respuestas correctas: $_correctas de ${widget.quiz.preguntas.length}.',
     );
     Navigator.pop(context);
   }
@@ -89,14 +138,12 @@ class _QuizScreenState extends State<QuizScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _answered && op == pregunta.respuestaCorrecta
-                              ? Colors.green
-                              : _answered && op == _selected
-                                  ? Colors.red
-                                  : null,
+                            backgroundColor: _answered && op == _selected
+                              ? (_lastScore == 100 ? Colors.green : Colors.red)
+                              : null,
                           minimumSize: const Size(double.infinity, 48),
                         ),
-                        onPressed: _answered
+                        onPressed: _answered || _grading
                             ? null
                             : () {
                                 setState(() => _selected = op);
@@ -110,23 +157,35 @@ class _QuizScreenState extends State<QuizScreen> {
                   children: [
                     TextField(
                       controller: _textController,
+                      readOnly: _answered || _grading,
                       decoration: const InputDecoration(
                         hintText: 'Escribe tu respuesta',
                         border: OutlineInputBorder(),
                       ),
-                      onSubmitted: _answered ? null : _checkAnswer,
+                      onSubmitted: _answered || _grading ? null : _checkAnswer,
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: _answered ? null : () => _checkAnswer(_textController.text),
-                      child: const Text('Comprobar'),
+                      onPressed: _answered || _grading ? null : () => _checkAnswer(_textController.text),
+                      child: _grading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Comprobar'),
                     ),
                   ],
                 ),
-              if (_answered && pregunta.explicacion != null) ...[
+              if (_grading) ...[
                 const SizedBox(height: 16),
+                const Text('Evaluando tu respuesta...'),
+              ],
+              if (_answered) ...[
+                const SizedBox(height: 16),
+                Text('Puntuación: $_lastScore/100'),
                 Text(
-                  pregunta.explicacion!,
+                  _feedback ?? pregunta.explicacion ?? '',
                   style: TextStyle(color: Colors.grey[700], fontStyle: FontStyle.italic),
                 ),
               ],

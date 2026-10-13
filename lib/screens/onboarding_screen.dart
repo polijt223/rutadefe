@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  final VoidCallback onCompleted;
+
+  const OnboardingScreen({super.key, required this.onCompleted});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -34,12 +35,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboarding_done', true);
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    }
+    if (mounted) widget.onCompleted();
   }
 
   @override

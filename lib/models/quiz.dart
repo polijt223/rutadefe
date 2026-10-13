@@ -11,7 +11,7 @@ class PreguntaQuiz {
     required this.tipo,
     required this.enunciado,
     this.opciones = const [],
-    required this.respuestaCorrecta,
+    this.respuestaCorrecta = '',
     this.explicacion,
   });
 
@@ -21,7 +21,7 @@ class PreguntaQuiz {
       tipo: map['tipo'] ?? 'multiple',
       enunciado: map['enunciado'] ?? '',
       opciones: List<String>.from(map['opciones'] ?? []),
-      respuestaCorrecta: map['respuestaCorrecta'] ?? '',
+      respuestaCorrecta: '',
       explicacion: map['explicacion'],
     );
   }

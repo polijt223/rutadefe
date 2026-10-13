@@ -22,7 +22,7 @@ class Seminario {
       descripcion: map['descripcion'] ?? '',
       imagenPortada: map['imagenPortada'],
       activo: map['activo'] ?? true,
-      creadoEn: (map['creadoEn'] as dynamic)?.toDate() ?? DateTime.now(),
+      creadoEn: ((map['creadoEn'] ?? map['createdAt']) as dynamic)?.toDate() ?? DateTime.now(),
     );
   }
 

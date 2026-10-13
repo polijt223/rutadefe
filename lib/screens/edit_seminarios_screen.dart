@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/async_stream_builder.dart';
 
 class EditSeminariosScreen extends StatelessWidget {
   const EditSeminariosScreen({super.key});
@@ -8,11 +9,14 @@ class EditSeminariosScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Editar Seminarios')),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('seminarios').snapshots(),
+      body: AsyncStreamBuilder<QuerySnapshot>(
+        streamFactory: () => FirebaseFirestore.instance.collection('seminarios').snapshots(),
+        loadingMessage: 'Cargando seminarios...',
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.docs;
+          if (docs.isEmpty) {
+            return const Center(child: Text('No hay seminarios para editar'));
+          }
           return ListView.builder(
             itemCount: docs.length,
             itemBuilder: (context, i) {

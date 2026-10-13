@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import '../models/seminario.dart';
 import '../services/firestore_service.dart';
 import '../services/local_cache_service.dart';
-import '../widgets/fade_slide_in.dart';
+import '../widgets/async_stream_builder.dart';
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
@@ -11,13 +12,13 @@ class NotificationsScreen extends StatelessWidget {
     final firestore = FirestoreService();
     return Scaffold(
       appBar: AppBar(title: const Text('Notificaciones')),
-      body: StreamBuilder<List<Seminario>>(
-        stream: firestore.getSeminarios(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+      body: AsyncStreamBuilder<List<Seminario>>(
+        streamFactory: firestore.getSeminarios,
+        loadingMessage: 'Cargando seminarios...',
+        builder: (context, seminarios) {
+          if (seminarios.isEmpty) {
+            return const Center(child: Text('No hay seminarios disponibles todavía'));
           }
-          final seminarios = snapshot.data!;
           return ListView.builder(
             itemCount: seminarios.length,
             itemBuilder: (context, index) {
@@ -65,13 +66,10 @@ class _SeminarioNotificationsDetail extends StatelessWidget {
           ),
         ],
       ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: LocalCacheService.getHistoryForSeminario(seminarioId),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final items = snapshot.data!;
+      body: AsyncFutureBuilder<List<Map<String, dynamic>>>(
+        futureFactory: () => LocalCacheService.getHistoryForSeminario(seminarioId),
+        loadingMessage: 'Cargando historial...',
+        builder: (context, items) {
           if (items.isEmpty) {
             return const Center(child: Text('Aún no has recibido notificaciones de este seminario'));
           }

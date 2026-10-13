@@ -13,7 +13,6 @@ class NotesSection extends StatefulWidget {
 
 class _NotesSectionState extends State<NotesSection> {
   final _controller = TextEditingController();
-  String? _myNote;
   List<Map<String, dynamic>> _friendsNotes = [];
 
   @override
@@ -23,18 +22,40 @@ class _NotesSectionState extends State<NotesSection> {
   }
 
   Future<void> _load() async {
-    final my = await NotesService().getMyNote(widget.seccionId);
+    final my = await NotesService().getMyNote(
+      seminarioId: widget.seminarioId,
+      seccionId: widget.seccionId,
+    );
     final friends = await FriendsService().getFriends().first;
     final friendNotes = await NotesService().getFriendsNotes(
+      seminarioId: widget.seminarioId,
       seccionId: widget.seccionId,
       friendUids: friends.map((f) => f.uid).toList(),
     );
     if (mounted) {
       setState(() {
-        _myNote = my;
         _controller.text = my ?? '';
         _friendsNotes = friendNotes;
       });
+    }
+  }
+
+  Future<void> _save() async {
+    final text = _controller.text.trim();
+    try {
+      await NotesService().saveNote(
+        seccionId: widget.seccionId,
+        seminarioId: widget.seminarioId,
+        texto: text,
+      );
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nota guardada')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo guardar la nota: $error')));
+      }
     }
   }
 
@@ -52,14 +73,15 @@ class _NotesSectionState extends State<NotesSection> {
             hintText: 'Escribe tus notas de esta sección...',
             border: OutlineInputBorder(),
           ),
-          onSubmitted: (v) async {
-            await NotesService().saveNote(
-              seccionId: widget.seccionId,
-              seminarioId: widget.seminarioId,
-              texto: v,
-            );
-            setState(() => _myNote = v);
-          },
+          onSubmitted: (_) => _save(),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _save,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Guardar nota'),
+          ),
         ),
         const SizedBox(height: 16),
         if (_friendsNotes.isNotEmpty) ...[

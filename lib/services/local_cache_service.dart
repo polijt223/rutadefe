@@ -78,36 +78,54 @@ class LocalCacheService {
     required String remoteVersion,
   }) async {
     final db = await database;
-
-    // Eliminar versión anterior si existe
-    final old = await db.query('archivos_locales', where: 'id = ?', whereArgs: [fileId]);
-    if (old.isNotEmpty) {
-      final oldPath = old.first['rutaLocal'] as String?;
-      if (oldPath != null) {
-        final file = File(oldPath);
-        if (await file.exists()) await file.delete();
-      }
-      await db.delete('archivos_locales', where: 'id = ?', whereArgs: [fileId]);
-    }
-
-    // Descargar nuevo
     final dir = await getApplicationDocumentsDirectory();
-    final localPath = join(dir.path, '${fileId}_$remoteVersion');
-    final response = await http.get(Uri.parse(remoteUrl));
-    await File(localPath).writeAsBytes(response.bodyBytes);
+    final fileExtension = extension(nombre);
+    final localPath = join(dir.path, '${fileId}_$remoteVersion$fileExtension');
+    final temporaryPath = '$localPath.download';
+    final old = await db.query('archivos_locales', where: 'id = ?', whereArgs: [fileId]);
+    final oldPath = old.isEmpty ? null : old.first['rutaLocal'] as String?;
 
-    await db.insert('archivos_locales', {
-      'id': fileId,
-      'seminarioId': seminarioId,
-      'seccionId': seccionId,
-      'nombre': nombre,
-      'tipo': tipo,
-      'version': remoteVersion,
-      'rutaLocal': localPath,
-      'fechaDescarga': DateTime.now().millisecondsSinceEpoch,
-    });
+    try {
+      final response = await http.get(Uri.parse(remoteUrl)).timeout(const Duration(seconds: 45));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Descarga fallida (${response.statusCode})', uri: Uri.parse(remoteUrl));
+      }
 
-    return localPath;
+      final temporaryFile = File(temporaryPath);
+      if (await temporaryFile.exists()) await temporaryFile.delete();
+      await temporaryFile.writeAsBytes(response.bodyBytes, flush: true);
+
+      final finalFile = File(localPath);
+      if (await finalFile.exists()) await finalFile.delete();
+      await temporaryFile.rename(localPath);
+
+      await db.insert(
+        'archivos_locales',
+        {
+          'id': fileId,
+          'seminarioId': seminarioId,
+          'seccionId': seccionId,
+          'nombre': nombre,
+          'tipo': tipo,
+          'version': remoteVersion,
+          'rutaLocal': localPath,
+          'fechaDescarga': DateTime.now().millisecondsSinceEpoch,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      if (oldPath != null && oldPath != localPath) {
+        final oldFile = File(oldPath);
+        if (await oldFile.exists()) await oldFile.delete();
+      }
+      return localPath;
+    } catch (_) {
+      for (final path in [temporaryPath, localPath]) {
+        final file = File(path);
+        if (await file.exists() && path != oldPath) await file.delete();
+      }
+      rethrow;
+    }
   }
 
   /// Guarda una notificación recibida en el historial (sin duplicados).

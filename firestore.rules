@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    function isMutualFriend(userId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/usuarios/$(userId)/amigos/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)/amigos/$(userId));
+    }
+
+    match /seminarios/{seminarioId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+
+      match /miniReflexiones/{reflexionId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /secciones/{seccionId} {
+        allow read: if signedIn();
+        allow create, update, delete: if isAdmin();
+
+        match /quiz/{quizId} {
+          allow read: if signedIn();
+          allow create, update, delete: if isAdmin();
+
+          match /preguntas/{preguntaId} {
+            allow read: if signedIn()
+              && (isAdmin() || !resource.data.keys().hasAny(['respuestaCorrecta']));
+            allow create, update, delete: if isAdmin();
+
+            match /respuestas/{answerId} {
+              allow read: if false;
+              allow create, update, delete: if isAdmin();
+            }
+          }
+        }
+
+        match /notas/{noteUid} {
+          allow read: if signedIn()
+            && (resource.data.uid == request.auth.uid || isMutualFriend(resource.data.uid));
+          allow create, update: if signedIn()
+            && noteUid == request.auth.uid
+            && request.resource.data.uid == request.auth.uid
+            && request.resource.data.seminarioId == seminarioId
+            && request.resource.data.seccionId == seccionId
+            && request.resource.data.keys().hasOnly(['uid', 'seminarioId', 'seccionId', 'texto', 'fecha']);
+          allow delete: if signedIn() && noteUid == request.auth.uid;
+        }
+
+      }
+    }
+
+    match /usuarios/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && !request.resource.data.keys().hasAny(['isAdmin'])
+        && request.resource.data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'photoUrl', 'friendCode',
+          'fcmToken', 'fcmTokenUpdatedAt', 'notificaciones'
+        ]);
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'uid', 'displayName', 'email', 'photoUrl', 'friendCode',
+          'fcmToken', 'fcmTokenUpdatedAt', 'notificaciones'
+        ]);
+      allow delete: if isAdmin();
+
+      match /amigos/{friendUid} {
+        allow read: if isOwner(userId);
+        allow create, update, delete: if isOwner(userId)
+          || (signedIn()
+            && friendUid == request.auth.uid
+            && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)/amigos/$(userId)));
+      }
+
+      match /puntajes/{seminarioId} {
+        allow read: if isOwner(userId) || isAdmin() || isMutualFriend(userId);
+        allow create, update: if false;
+        allow delete: if isAdmin();
+      }
+
+      match /progreso/{seminarioId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['seccionesCompletadas', 'progreso', 'totalSecciones', 'updatedAt']);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /notas/{seccionId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    match /perfilesPublicos/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isMutualFriend(userId);
+      allow create, update: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'photoUrl']);
+      allow delete: if isAdmin();
+    }
+
+    match /codigosAmigo/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

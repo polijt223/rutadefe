@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -19,18 +20,24 @@ class AuthService {
     return _auth.signInWithCredential(credential);
   }
 
-  // Placeholder para X/Twitter. Requiere configuración adicional de OAuth.
-  // Recomendado: usar firebase_auth + twitter_login o el flujo OAuth de X.
   Future<UserCredential?> signInWithX() async {
-    // TODO: Implementar con el paquete actualizado de X/Twitter OAuth
-    // Ejemplo de estructura:
-    // final twitterLogin = TwitterLogin(...);
-    // final result = await twitterLogin.login();
-    // luego crear credential y signInWithCredential
-    throw UnimplementedError('Configurar OAuth de X/Twitter en Firebase Console');
+    final provider = OAuthProvider('twitter.com');
+    return _auth.signInWithProvider(provider);
   }
 
   Future<void> signOut() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      try {
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (_) {}
+      try {
+        await FirebaseFirestore.instance.collection('usuarios').doc(user.uid).update({
+          'fcmToken': FieldValue.delete(),
+          'fcmTokenUpdatedAt': FieldValue.delete(),
+        });
+      } catch (_) {}
+    }
     await _googleSignIn.signOut();
     await _auth.signOut();
   }

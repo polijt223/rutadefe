@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/fade_slide_in.dart';
+import '../services/progress_service.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
@@ -19,7 +19,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
   Future<void> _load() async {
     final count = await ProgressService().getCompletedSeminariosCount();
-    setState(() => _completedCount = count);
+    if (mounted) setState(() => _completedCount = count);
   }
 
   @override

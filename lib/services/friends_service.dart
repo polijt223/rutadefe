@@ -12,9 +12,9 @@ class FriendsService {
   Future<bool> addFriendByCode(String code) async {
     if (_uid == null) return false;
     // Buscar usuario por código (en producción se puede usar un campo 'friendCode')
-    final query = await _db.collection('usuarios').where('friendCode', isEqualTo: code).limit(1).get();
-    if (query.docs.isEmpty) return false;
-    final friendUid = query.docs.first.id;
+    final codeDoc = await _db.collection('codigosAmigo').doc(code.toUpperCase()).get();
+    final friendUid = codeDoc.data()?['uid'] as String?;
+    if (friendUid == null) return false;
     if (friendUid == _uid) return false;
 
     await _db.collection('usuarios').doc(_uid).collection('amigos').doc(friendUid).set({
@@ -37,7 +37,7 @@ class FriendsService {
         .asyncMap((snap) async {
       final friends = <Friend>[];
       for (final doc in snap.docs) {
-        final userDoc = await _db.collection('usuarios').doc(doc.id).get();
+        final userDoc = await _db.collection('perfilesPublicos').doc(doc.id).get();
         if (userDoc.exists) {
           friends.add(Friend.fromMap(doc.id, userDoc.data()!));
         }

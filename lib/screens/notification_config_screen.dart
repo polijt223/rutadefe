@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/async_stream_builder.dart';
 
 class NotificationConfigScreen extends StatefulWidget {
   const NotificationConfigScreen({super.key});
@@ -29,14 +30,14 @@ class _NotificationConfigScreenState extends State<NotificationConfigScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('seminarios').snapshots(),
+            AsyncStreamBuilder<QuerySnapshot>(
+              streamFactory: () => FirebaseFirestore.instance.collection('seminarios').snapshots(),
+              loadingMessage: 'Cargando seminarios...',
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const CircularProgressIndicator();
                 return DropdownButtonFormField<String>(
-                  value: _seminarioId,
-                  hint: const Text('Selecciona seminario'),
-                  items: snapshot.data!.docs.map((d) {
+                  initialValue: _seminarioId,
+                  hint: Text(snapshot.docs.isEmpty ? 'No hay seminarios disponibles' : 'Selecciona seminario'),
+                  items: snapshot.docs.map((d) {
                     final data = d.data() as Map<String, dynamic>;
                     return DropdownMenuItem(value: d.id, child: Text(data['nombre'] ?? d.id));
                   }).toList(),
@@ -46,7 +47,7 @@ class _NotificationConfigScreenState extends State<NotificationConfigScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _frecuencia,
+              initialValue: _frecuencia,
               items: const [
                 DropdownMenuItem(value: '1h', child: Text('Cada 1 hora')),
                 DropdownMenuItem(value: '6h', child: Text('Cada 6 horas')),

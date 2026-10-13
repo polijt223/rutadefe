@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../widgets/fade_slide_in.dart';
+import '../models/friend.dart';
+import '../services/friends_service.dart';
+import '../widgets/async_stream_builder.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -18,6 +20,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
     FriendsService().getMyFriendCode().then((c) {
       if (mounted) setState(() => _myCode = c);
     });
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -44,11 +52,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ElevatedButton(
                   onPressed: () async {
                     final ok = await service.addFriendByCode(_codeController.text.trim());
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(ok ? 'Amigo agregado' : 'Código no válido')),
-                      );
-                    }
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(ok ? 'Amigo agregado' : 'Código no válido')),
+                    );
                   },
                   child: const Text('Agregar amigo'),
                 ),
@@ -57,11 +64,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ),
           const Divider(),
           Expanded(
-            child: StreamBuilder(
-              stream: service.getFriends(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final friends = snapshot.data!;
+            child: AsyncStreamBuilder<List<Friend>>(
+              streamFactory: service.getFriends,
+              loadingMessage: 'Cargando amigos...',
+              builder: (context, friends) {
                 if (friends.isEmpty) {
                   return const Center(child: Text('Aún no tienes amigos'));
                 }

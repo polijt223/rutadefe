@@ -13,12 +13,12 @@ class FirestoreService {
   Stream<List<Seminario>> getSeminarios() {
     return _db
         .collection('seminarios')
-        .where('activo', isEqualTo: true)
-        .orderBy('creadoEn', descending: true)
         .snapshots()
         .map((snap) => snap.docs
             .map((d) => Seminario.fromMap(d.id, d.data()))
-            .toList());
+            .where((seminario) => seminario.activo)
+            .toList()
+          ..sort((a, b) => b.creadoEn.compareTo(a.creadoEn)));
   }
 
   // SECCIONES de un seminario
@@ -54,16 +54,37 @@ class FirestoreService {
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return;
-    await _db.collection('usuarios').doc(uid).set({
-      'notificaciones': {
-        seminarioId: {
-          'enabled': enabled,
-          'frequency': frequency,
-          'lastSentIndex': 0,
-          'cycleCompleted': false,
-        }
-      }
-    }, SetOptions(merge: true));
+    final userRef = _db.collection('usuarios').doc(uid);
+    final userDoc = await userRef.get();
+    final notificationData = userDoc.data()?['notificaciones'];
+    final preferences = notificationData is Map
+        ? Map<String, dynamic>.from(notificationData)
+        : <String, dynamic>{};
+    final existingData = preferences[seminarioId];
+    final existing = existingData is Map
+        ? Map<String, dynamic>.from(existingData)
+        : <String, dynamic>{};
+    final restartCycle = enabled && existing['cycleCompleted'] == true;
+
+    preferences[seminarioId] = {
+      ...existing,
+      'enabled': enabled,
+      'frequency': frequency,
+      'lastSentIndex': restartCycle ? 0 : existing['lastSentIndex'] ?? 0,
+      'cycleCompleted': restartCycle ? false : existing['cycleCompleted'] ?? false,
+      'lastSentAt': restartCycle ? null : existing['lastSentAt'],
+    };
+    await userRef.set({'notificaciones': preferences}, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>?> getNotificationPreference(String seminarioId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return null;
+    final doc = await _db.collection('usuarios').doc(uid).get();
+    final notificationData = doc.data()?['notificaciones'];
+    if (notificationData is! Map) return null;
+    final preference = notificationData[seminarioId];
+    return preference is Map ? Map<String, dynamic>.from(preference) : null;
   }
 
   // Reiniciar ciclo de un seminario
@@ -73,6 +94,8 @@ class FirestoreService {
     await _db.collection('usuarios').doc(uid).update({
       'notificaciones.$seminarioId.lastSentIndex': 0,
       'notificaciones.$seminarioId.cycleCompleted': false,
+      'notificaciones.$seminarioId.enabled': true,
+      'notificaciones.$seminarioId.lastSentAt': FieldValue.delete(),
     });
   }
 
@@ -92,7 +115,13 @@ class FirestoreService {
     final preguntas = preguntasSnap.docs
         .map((d) => PreguntaQuiz.fromMap(d.id, d.data()))
         .toList();
-    return Quiz.fromMap(quizDoc.id, quizDoc.data(), preguntas);
+    final quiz = Quiz.fromMap(quizDoc.id, quizDoc.data(), preguntas);
+    return Quiz(
+      id: quiz.id,
+      seccionId: seccionId,
+      titulo: quiz.titulo,
+      preguntas: quiz.preguntas,
+    );
   }
   Future<bool> isAdmin() async {
     final uid = _auth.currentUser?.uid;

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -24,7 +23,7 @@ class CertificateService {
               children: [
                 pw.Text(
                   'CERTIFICADO',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 32,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.brown,
@@ -43,7 +42,7 @@ class CertificateService {
                 pw.SizedBox(height: 10),
                 pw.Text(
                   userName,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 24,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -56,7 +55,7 @@ class CertificateService {
                 pw.SizedBox(height: 10),
                 pw.Text(
                   seminarioName,
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 20,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.brown,
@@ -71,7 +70,7 @@ class CertificateService {
                 pw.SizedBox(height: 60),
                 pw.Text(
                   'Que tu fe sea tu guía',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 14,
                     fontStyle: pw.FontStyle.italic,
                   ),

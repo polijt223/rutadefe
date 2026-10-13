@@ -7,6 +7,8 @@ App Android cristiana de reflexión espiritual y material de formación.
 - **Autenticación**: Google (X/Twitter requiere configuración adicional de OAuth).
 - **Seminarios y secciones**: Contenido organizado por capítulos/secciones con texto, PDFs, imágenes y links de YouTube.
 - **Caché inteligente con versionado**: Los archivos se descargan una sola vez. Solo se vuelven a descargar si el administrador actualiza la versión. Se elimina la versión anterior automáticamente.
+- **Quizzes**: Preguntas de opción múltiple y abiertas. Las abiertas se corrigen desde Cloud Functions con Gemini; los resultados se guardan por usuario y seminario.
+- **Amigos y progreso**: Notas por sección con lectura entre amigos mutuos, ranking privado por seminario, progreso por sección, logros y certificado PDF.
 - **Notificaciones push automáticas (por seminario)**:
   - Cada seminario tiene su propia bolsa de mini-reflexiones (texto y/o imagen).
   - El usuario activa las notificaciones por seminario y elige frecuencia (1h / 6h / 12h).
@@ -15,7 +17,7 @@ App Android cristiana de reflexión espiritual y material de formación.
   - Historial accesible desde la campanita, segmentado por seminario (sin duplicados).
 - **Panel de administrador** dentro de la misma app (rol `isAdmin` en Firestore).
 - **Temas**: Light (borgoña + dorado) y Dark (blanco + dorado).
-- **Apertura de archivos**: Dentro de la app o con apps externas del sistema.
+- **Apertura de archivos**: Descarga offline versionada y apertura con una aplicación compatible del sistema.
 
 ## Estructura del proyecto
 
@@ -28,7 +30,7 @@ lib/
 functions/         # Cloud Function programada para enviar notificaciones
 ```
 
-## Configuración inicial (Firebase - Plan Spark gratis)
+## Configuración Firebase
 
 1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com).
 2. Activa:
@@ -41,22 +43,12 @@ functions/         # Cloud Function programada para enviar notificaciones
    - `seminarios/{id}` → nombre, descripcion, activo, creadoEn
    - `seminarios/{id}/secciones/{id}` → titulo, contenidoTexto, orden, version, archivos[], youtubeUrl
    - `seminarios/{id}/miniReflexiones/{id}` → texto, imagenUrl, orden
-   - `usuarios/{uid}` → isAdmin (bool), fcmToken, notificaciones: { seminarioId: { enabled, frequency, lastSentIndex, cycleCompleted } }
-5. Reglas de seguridad recomendadas (ajustar según necesidad):
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /seminarios/{seminario} {
-         allow read: if request.auth != null;
-         allow write: if request.auth != null && get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
-       }
-       match /usuarios/{userId} {
-         allow read, write: if request.auth != null && request.auth.uid == userId;
-       }
-     }
-   }
-   ```
+   - `seminarios/{id}/secciones/{id}/notas/{uid}` → notas privadas por sección
+   - `usuarios/{uid}` → rol admin, token FCM, preferencias y puntajes privados
+   - `perfilesPublicos/{uid}` → nombre y foto visibles solo al usuario y amigos mutuos
+   - `codigosAmigo/{codigo}` → resolución privada de códigos de amistad
+5. Despliega las reglas incluidas en el repositorio: `firebase deploy --only firestore:rules,storage`.
+6. Añade las huellas SHA-1/SHA-256 Android en Firebase Authentication para Google Sign-In.
 
 ## Compilar y ejecutar
 
@@ -75,25 +67,27 @@ flutter build apk --release
 ```bash
 cd functions
 npm install
+cd ..
+firebase functions:secrets:set GEMINI_API_KEY
 firebase deploy --only functions
 ```
 
-La función `sendScheduledReflections` corre cada 60 minutos y respeta las preferencias de cada usuario.
+El comando de secretos pedirá la clave de Gemini de forma interactiva. No la pongas en Flutter, `firebase_options.dart` ni en el repositorio: cualquier credencial incluida en una APK se puede extraer. Rota la clave que se haya agregado anteriormente al código cliente.
+
+`sendScheduledReflections` corre cada hora y aplica la frecuencia individual (1h/6h/12h). Las funciones programadas requieren el plan Blaze y Cloud Scheduler habilitado.
 
 ## Notas importantes
 
-- El login con X/Twitter está preparado pero requiere completar la configuración OAuth en Firebase y el paquete correspondiente.
-- El panel de administrador tiene la estructura básica. Los formularios de creación/edición y subida de archivos a Storage se pueden expandir fácilmente.
+- El login con X/Twitter todavía no está implementado.
+- El primer administrador debe recibir `isAdmin: true` mediante Firebase Console o un proceso confiable del servidor; la app no permite autoasignarse ese rol.
 - La lógica de caché usa SQLite + sistema de archivos del dispositivo.
-- Las notificaciones ricas (con imagen) son soportadas por FCM en Android.
+- Las reglas del repositorio no se aplican hasta ejecutar el deploy indicado.
 
-## Próximos pasos recomendados
+## Funciones pendientes
 
-1. Completar formularios del panel admin.
-2. Implementar completamente el login con X.
-3. Añadir visores internos de PDF e imágenes (actualmente se abre con el sistema).
-4. Mejorar la lógica de frecuencia en la Cloud Function (guardar `lastSentAt`).
-5. Añadir el logo real en los assets.
+- Configurar y desplegar el secreto Gemini, las reglas y las Cloud Functions en Firebase.
+- Implementar OAuth de X y un visor interno de PDF/imágenes.
+- Las notificaciones push por imagen dependen de que cada reflexión tenga `imagenUrl` pública/descargable.
 
 ---
 

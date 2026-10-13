@@ -12,10 +12,12 @@ import 'quiz_screen.dart';
 class ContentViewerScreen extends StatefulWidget {
   final Seccion seccion;
   final String seminarioId;
+  final int totalSecciones;
   const ContentViewerScreen({
     super.key,
     required this.seccion,
     required this.seminarioId,
+    this.totalSecciones = 1,
   });
 
   @override
@@ -130,6 +132,7 @@ class _ContentViewerScreenState extends State<ContentViewerScreen> {
                             builder: (_) => QuizScreen(
                               quiz: snapshot.data!,
                               seminarioId: widget.seminarioId,
+                              totalSecciones: widget.totalSecciones,
                             ),
                           ),
                         ),
