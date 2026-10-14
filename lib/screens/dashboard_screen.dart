@@ -7,6 +7,8 @@ import '../theme/app_theme.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/glass_panel.dart';
+import '../widgets/living_icon.dart';
+import '../widgets/soft_float.dart';
 import 'achievements_screen.dart';
 import 'friends_screen.dart';
 import 'search_screen.dart';
@@ -93,8 +95,9 @@ class DashboardScreen extends StatelessWidget {
                     child: IconButton(
                       tooltip: 'Menú',
                       onPressed: onOpenMenu,
-                      icon: Icon(
-                        Icons.menu,
+                      icon: LivingIcon(
+                        icon: Icons.menu,
+                        active: true,
                         color: dark ? Colors.white : AppTheme.olive,
                       ),
                     ),
@@ -244,6 +247,7 @@ class DashboardScreen extends StatelessWidget {
                       child: _ActionTile(
                         image: 'assets/home/tile_continue.jpg',
                         label: 'Seguir el camino',
+                        floatDelay: Duration.zero,
                         onTap: current == null
                             ? onOpenSeminars
                             : () => Navigator.push(
@@ -259,6 +263,7 @@ class DashboardScreen extends StatelessWidget {
                       child: _ActionTile(
                         image: 'assets/home/tile_friends.jpg',
                         label: 'Caminar con amigos',
+                        floatDelay: const Duration(milliseconds: 220),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const FriendsScreen()),
@@ -270,6 +275,7 @@ class DashboardScreen extends StatelessWidget {
                       child: _ActionTile(
                         image: 'assets/home/tile_explore.jpg',
                         label: 'Explorar tesoros',
+                        floatDelay: const Duration(milliseconds: 440),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const SearchScreen()),
@@ -322,7 +328,7 @@ class _StatChip extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, color: AppTheme.gold),
+        LivingIcon(icon: icon, active: true, color: AppTheme.gold),
         const SizedBox(height: 4),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
         Text(
@@ -341,7 +347,13 @@ class _ActionTile extends StatelessWidget {
   final String image;
   final String label;
   final VoidCallback onTap;
-  const _ActionTile({required this.image, required this.label, required this.onTap});
+  final Duration floatDelay;
+  const _ActionTile({
+    required this.image,
+    required this.label,
+    required this.onTap,
+    this.floatDelay = Duration.zero,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -353,11 +365,15 @@ class _ActionTile extends StatelessWidget {
         children: [
           Expanded(
             child: Center(
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: Image.asset(image, fit: BoxFit.cover),
+              child: SoftFloat(
+                delay: floatDelay,
+                offset: 4,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(image, fit: BoxFit.cover),
+                  ),
                 ),
               ),
             ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
 import '../services/progress_service.dart';
@@ -18,9 +19,13 @@ import '../services/auth_service.dart';
 import '../services/lock_ads_sync_service.dart';
 import '../theme/app_layout.dart';
 import '../theme/app_motion.dart';
+import '../widgets/animated_indexed_stack.dart';
 import '../widgets/async_stream_builder.dart';
+import '../widgets/brand_loading_screen.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/fade_slide_in.dart';
+import '../widgets/living_icon.dart';
+import '../widgets/press_scale.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late TabController _tabController;
   int _streak = 0;
   int _navIndex = 0;
+  bool _isAdmin = false;
 
   @override
   void initState() {
@@ -42,8 +48,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _tabController = TabController(length: 2, vsync: this);
     _loadStreak();
     _loadProgress();
+    unawaited(_loadAdmin());
     StreakService().recordActivity();
     unawaited(LockAdsSyncService().syncIfDue());
+  }
+
+  Future<void> _loadAdmin() async {
+    try {
+      final isAdmin = await FirestoreService().isAdmin();
+      if (mounted) setState(() => _isAdmin = isAdmin);
+    } catch (_) {
+      if (mounted) setState(() => _isAdmin = false);
+    }
   }
 
   Future<void> _loadStreak() async {
@@ -61,25 +77,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
-  Future<void> _openAdmin() async {
+  void _openAdmin() {
+    if (!_isAdmin) return;
     Navigator.pop(context);
-    try {
-      final isAdmin = await FirestoreService().isAdmin();
-      if (!mounted) return;
-      if (isAdmin) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen()));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No tienes permisos de administrador')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo verificar el acceso de administrador')),
-        );
-      }
-    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminScreen()));
   }
 
   Widget _drawerSection(String title) {
@@ -232,11 +233,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         setState(() => _navIndex = 2);
                       },
                     ),
-                    _drawerItem(
-                      icon: Icons.admin_panel_settings_outlined,
-                      label: 'Administración',
-                      onTap: _openAdmin,
-                    ),
+                    if (_isAdmin)
+                      _drawerItem(
+                        icon: Icons.admin_panel_settings_outlined,
+                        label: 'Administración',
+                        onTap: _openAdmin,
+                      ),
                   ],
                 ),
               ),
@@ -255,9 +257,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       body: AsyncStreamBuilder<List<Seminario>>(
         streamFactory: firestore.getSeminarios,
-        loadingMessage: 'Cargando tu camino...',
+        loadingBuilder: (_) => const BrandLoadingScreen(),
         builder: (context, allSeminarios) {
-          return IndexedStack(
+          return AnimatedIndexedStack(
             index: _navIndex,
             children: [
               DashboardScreen(
@@ -275,11 +277,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _navIndex,
-        onDestinationSelected: (index) => setState(() => _navIndex = index),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Seminarios'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+        animationDuration: AppMotion.medium,
+        onDestinationSelected: (index) {
+          HapticFeedback.selectionClick();
+          setState(() => _navIndex = index);
+        },
+        destinations: [
+          NavigationDestination(
+            icon: LivingIcon(icon: Icons.home_outlined, active: _navIndex == 0),
+            selectedIcon: const LivingIcon(icon: Icons.home, active: true),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: LivingIcon(icon: Icons.menu_book_outlined, active: _navIndex == 1),
+            selectedIcon: const LivingIcon(icon: Icons.menu_book, active: true),
+            label: 'Seminarios',
+          ),
+          NavigationDestination(
+            icon: LivingIcon(icon: Icons.person_outline, active: _navIndex == 2),
+            selectedIcon: const LivingIcon(icon: Icons.person, active: true),
+            label: 'Perfil',
+          ),
         ],
       ),
     );
@@ -287,6 +305,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildSeminarsTab(List<Seminario> allSeminarios) {
     return Scaffold(
+      primary: false,
       appBar: AppBar(
         title: const Text('Seminarios'),
         leading: IconButton(
@@ -372,12 +391,11 @@ class _SeminarioCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 4),
-      child: InkWell(
+      child: PressScale(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => SeminarioDetailScreen(seminario: seminario)),
         ),
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -392,7 +410,12 @@ class _SeminarioCard extends StatelessWidget {
                       color: colors.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.menu_book, size: 28, color: colors.primary),
+                    child: LivingIcon(
+                      icon: Icons.menu_book,
+                      size: 28,
+                      color: colors.primary,
+                      active: progress > 0,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

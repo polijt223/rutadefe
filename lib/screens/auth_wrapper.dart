@@ -6,6 +6,7 @@ import 'onboarding_screen.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
 import '../widgets/async_stream_builder.dart';
+import '../widgets/brand_loading_screen.dart';
 
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
@@ -32,9 +33,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_onboardingDone == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const BrandLoadingScreen();
     }
 
     if (!_onboardingDone!) {
@@ -46,7 +45,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return AsyncStreamBuilder<User?>(
       streamFactory: () => AuthService().authStateChanges,
       isDataReady: (snapshot) => snapshot.connectionState != ConnectionState.waiting,
-      loadingMessage: 'Comprobando tu sesión...',
+      loadingBuilder: (_) => const BrandLoadingScreen(),
       builder: (context, user) {
         if (user == null) return const LoginScreen();
         return const HomeScreen();

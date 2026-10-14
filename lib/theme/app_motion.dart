@@ -22,15 +22,35 @@ class SoftPageTransitionsBuilder extends PageTransitionsBuilder {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
-    final curved = CurvedAnimation(parent: animation, curve: AppMotion.emphasized);
-    return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.05, 0),
-          end: Offset.zero,
-        ).animate(curved),
-        child: child,
+    final incoming = CurvedAnimation(
+      parent: animation,
+      curve: AppMotion.emphasized,
+      reverseCurve: Curves.easeInCubic,
+    );
+    final outgoing = CurvedAnimation(
+      parent: secondaryAnimation,
+      curve: AppMotion.emphasized,
+    );
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: Offset.zero,
+        end: const Offset(-0.04, 0),
+      ).animate(outgoing),
+      child: FadeTransition(
+        opacity: Tween<double>(begin: 1, end: 0.88).animate(outgoing),
+        child: FadeTransition(
+          opacity: incoming,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.07, 0.012),
+              end: Offset.zero,
+            ).animate(incoming),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.975, end: 1).animate(incoming),
+              child: child,
+            ),
+          ),
+        ),
       ),
     );
   }

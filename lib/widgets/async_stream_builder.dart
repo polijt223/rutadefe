@@ -6,6 +6,7 @@ class AsyncStreamBuilder<T> extends StatefulWidget {
   final Stream<T> Function() streamFactory;
   final Widget Function(BuildContext context, T data) builder;
   final String loadingMessage;
+  final WidgetBuilder? loadingBuilder;
   final bool Function(AsyncSnapshot<T> snapshot)? isDataReady;
 
   const AsyncStreamBuilder({
@@ -13,6 +14,7 @@ class AsyncStreamBuilder<T> extends StatefulWidget {
     required this.streamFactory,
     required this.builder,
     this.loadingMessage = 'Cargando información...',
+    this.loadingBuilder,
     this.isDataReady,
   });
 
@@ -36,6 +38,9 @@ class _AsyncStreamBuilderState<T> extends State<AsyncStreamBuilder<T>> {
         }
         final hasData = widget.isDataReady?.call(snapshot) ?? snapshot.hasData;
         if (!hasData) {
+          if (widget.loadingBuilder != null) {
+            return widget.loadingBuilder!(context);
+          }
           return _AsyncLoadingPanel(
             key: ValueKey(_attempt),
             message: widget.loadingMessage,
@@ -132,15 +137,30 @@ class _AsyncLoadingPanelState extends State<_AsyncLoadingPanel> {
   @override
   Widget build(BuildContext context) {
     if (_timedOut) return AsyncErrorView(onRetry: widget.onRetry);
+    final colors = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(),
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                color: colors.primary,
+              ),
+            ),
             const SizedBox(height: 16),
-            Text(widget.message, textAlign: TextAlign.center),
+            Text(
+              widget.message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: colors.onSurface.withValues(alpha: 0.68),
+              ),
+            ),
           ],
         ),
       ),

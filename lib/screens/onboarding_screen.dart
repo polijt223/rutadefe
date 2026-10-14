@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_motion.dart';
 import '../widgets/adaptive_body.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/soft_float.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onCompleted;
@@ -126,10 +127,12 @@ class _OnboardingPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon == Icons.route)
-            const BrandLogo(height: 160)
-          else
-            Icon(icon, size: 100, color: Theme.of(context).colorScheme.primary),
+          SoftFloat(
+            offset: 8,
+            child: icon == Icons.route
+                ? const BrandLogo(height: 160)
+                : Icon(icon, size: 100, color: Theme.of(context).colorScheme.primary),
+          ),
           const SizedBox(height: 32),
           Text(title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
           const SizedBox(height: 16),

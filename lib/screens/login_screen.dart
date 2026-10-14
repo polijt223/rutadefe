@@ -4,6 +4,8 @@ import '../services/auth_service.dart';
 import '../widgets/adaptive_body.dart';
 import '../widgets/brand_logo.dart';
 import '../widgets/fade_slide_in.dart';
+import '../widgets/living_icon.dart';
+import '../widgets/soft_float.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -88,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const BrandLogo(height: 148),
+                const SoftFloat(offset: 6, child: BrandLogo(height: 148)),
                 const SizedBox(height: 16),
                 Text(
                   'Ruta de Fe',
@@ -112,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.login),
+                        : const LivingIcon(icon: Icons.login, active: true),
                     label: Text(_isSigningIn ? 'Conectando...' : 'Continuar con Google'),
                   ),
                 ),
@@ -121,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: _isSigningIn ? null : _signInWithX,
-                    icon: const Icon(Icons.alternate_email),
+                    icon: const LivingIcon(icon: Icons.alternate_email, active: true),
                     label: const Text('Continuar con X'),
                   ),
                 ),

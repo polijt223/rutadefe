@@ -83,6 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      primary: false,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: const Text('Mi Perfil'),

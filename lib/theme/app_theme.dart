@@ -133,6 +133,7 @@ class AppTheme {
         backgroundColor: scheme.surface.withValues(alpha: 0.94),
         indicatorColor: scheme.primary.withValues(alpha: 0.16),
         height: 70,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStatePropertyAll(
           TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.onSurface),
         ),

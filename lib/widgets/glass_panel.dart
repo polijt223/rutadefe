@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'press_scale.dart';
 
 class GlassPanel extends StatelessWidget {
   final Widget child;
@@ -47,13 +48,10 @@ class GlassPanel extends StatelessWidget {
       ),
     );
     if (onTap == null) return panel;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(radius),
-        child: panel,
-      ),
+    return PressScale(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(radius),
+      child: panel,
     );
   }
 }
