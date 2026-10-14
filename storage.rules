@@ -11,6 +11,14 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.isAdmin == true;
     }
 
+    match /anunciosBloqueo/{anuncioId}/{fileName} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin()
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+      allow delete: if isAdmin();
+    }
+
     match /seminarios/{seminarioId}/secciones/{seccionId}/{fileName} {
       allow read: if signedIn();
       allow create, update: if isAdmin()

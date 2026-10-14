@@ -17,7 +17,7 @@ App Android cristiana de reflexión espiritual y material de formación.
   - Historial accesible desde la campanita, segmentado por seminario (sin duplicados).
 - **Panel de administrador** dentro de la misma app (rol `isAdmin` en Firestore).
 - **Temas**: Light (borgoña + dorado) y Dark (blanco + dorado).
-- **Apertura de archivos**: Descarga offline versionada y apertura con una aplicación compatible del sistema.
+- **Apertura de archivos**: Descarga offline versionada. PDFs e imágenes se ven dentro de la app; también se pueden abrir con una aplicación del sistema.
 
 ## Estructura del proyecto
 
@@ -86,7 +86,7 @@ El comando de secretos pedirá la clave de Gemini de forma interactiva. No la po
 ## Funciones pendientes
 
 - Configurar y desplegar el secreto Gemini, las reglas y las Cloud Functions en Firebase.
-- Implementar OAuth de X y un visor interno de PDF/imágenes.
+- Implementar OAuth de X.
 - Las notificaciones push por imagen dependen de que cada reflexión tenga `imagenUrl` pública/descargable.
 
 ---

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 
-/// Widget reutilizable para animar la entrada de cualquier pantalla o lista.
 class FadeSlideIn extends StatelessWidget {
   final Widget child;
   final int delay;
@@ -10,13 +10,13 @@ class FadeSlideIn extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 500 + delay),
-      curve: Curves.easeOutCubic,
+      duration: Duration(milliseconds: AppMotion.medium.inMilliseconds + delay.clamp(0, 280)),
+      curve: AppMotion.emphasized,
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
           child: Transform.translate(
-            offset: Offset(0, 24 * (1 - value)),
+            offset: Offset(0, 18 * (1 - value)),
             child: child,
           ),
         );

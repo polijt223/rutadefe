@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
+import 'theme/app_motion.dart';
 import 'screens/auth_wrapper.dart';
 import 'services/theme_service.dart';
 import 'services/messaging_service.dart';
@@ -33,6 +34,8 @@ class RutaDeFeApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeService.themeMode,
+            themeAnimationDuration: AppMotion.slow,
+            themeAnimationCurve: AppMotion.emphasized,
             home: const AuthWrapper(),
           );
         },

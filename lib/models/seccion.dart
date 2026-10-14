@@ -57,4 +57,17 @@ class ArchivoMaterial {
       version: map['version'] ?? '1',
     );
   }
+
+  bool get isPdf {
+    final kind = tipo.toLowerCase();
+    return kind == 'pdf' || nombre.toLowerCase().endsWith('.pdf');
+  }
+
+  bool get isImage {
+    final kind = tipo.toLowerCase();
+    if (kind == 'imagen' || kind == 'image' || kind == 'img') return true;
+    final lower = nombre.toLowerCase();
+    return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.heic']
+        .any(lower.endsWith);
+  }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/firestore_service.dart';
@@ -11,8 +13,14 @@ import 'achievements_screen.dart';
 import 'friends_screen.dart';
 import 'profile_screen.dart';
 import 'search_screen.dart';
+import 'dashboard_screen.dart';
 import '../services/auth_service.dart';
+import '../services/lock_ads_sync_service.dart';
+import '../theme/app_layout.dart';
+import '../theme/app_motion.dart';
 import '../widgets/async_stream_builder.dart';
+import '../widgets/brand_logo.dart';
+import '../widgets/fade_slide_in.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,8 +31,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   final _progressService = ProgressService();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabController;
   int _streak = 0;
+  int _navIndex = 0;
 
   @override
   void initState() {
@@ -33,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _loadStreak();
     _loadProgress();
     StreakService().recordActivity();
+    unawaited(LockAdsSyncService().syncIfDue());
   }
 
   Future<void> _loadStreak() async {
@@ -118,41 +129,34 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     return Container(
       width: double.infinity,
-      color: colors.primary,
+      color: colors.surface,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: colors.onPrimary.withValues(alpha: 0.16),
-            child: Text(
-              name[0].toUpperCase(),
-              style: TextStyle(color: colors.onPrimary, fontWeight: FontWeight.w700),
-            ),
-          ),
+          const BrandLogo(height: 88),
           const SizedBox(height: 14),
           Text(
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colors.onPrimary, fontSize: 18, fontWeight: FontWeight.w700),
+            style: TextStyle(color: colors.onSurface, fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 3),
           Text(
             email,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: colors.onPrimary.withValues(alpha: 0.78), fontSize: 13),
+            style: TextStyle(color: colors.onSurface.withValues(alpha: 0.72), fontSize: 13),
           ),
           const SizedBox(height: 14),
           Row(
             children: [
-              Icon(Icons.local_fire_department, size: 18, color: colors.onPrimary),
+              Icon(Icons.local_fire_department, size: 18, color: colors.primary),
               const SizedBox(width: 6),
               Text(
                 '$_streak ${_streak == 1 ? 'día' : 'días'} de racha',
-                style: TextStyle(color: colors.onPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                style: TextStyle(color: colors.onSurface, fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -172,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     final firestore = FirestoreService();
 
     return Scaffold(
+      key: _scaffoldKey,
       drawer: Drawer(
         child: SafeArea(
           child: Column(
@@ -183,10 +188,22 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   children: [
                     _drawerSection('APRENDER'),
                     _drawerItem(
+                      icon: Icons.home_outlined,
+                      label: 'Inicio',
+                      selected: _navIndex == 0,
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() => _navIndex = 0);
+                      },
+                    ),
+                    _drawerItem(
                       icon: Icons.menu_book_outlined,
                       label: 'Seminarios',
-                      selected: true,
-                      onTap: () => Navigator.pop(context),
+                      selected: _navIndex == 1,
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() => _navIndex = 1);
+                      },
                     ),
                     _drawerSection('COMUNIDAD'),
                     _drawerItem(
@@ -209,7 +226,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     _drawerItem(
                       icon: Icons.person_outline,
                       label: 'Mi perfil',
-                      onTap: () => _openDrawerScreen(const ProfileScreen()),
+                      selected: _navIndex == 2,
+                      onTap: () {
+                        Navigator.pop(context);
+                        setState(() => _navIndex = 2);
+                      },
                     ),
                     _drawerItem(
                       icon: Icons.admin_panel_settings_outlined,
@@ -232,8 +253,46 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
       ),
+      body: AsyncStreamBuilder<List<Seminario>>(
+        streamFactory: firestore.getSeminarios,
+        loadingMessage: 'Cargando tu camino...',
+        builder: (context, allSeminarios) {
+          return IndexedStack(
+            index: _navIndex,
+            children: [
+              DashboardScreen(
+                seminarios: allSeminarios,
+                progressService: _progressService,
+                streak: _streak,
+                onOpenMenu: () => _scaffoldKey.currentState?.openDrawer(),
+                onOpenSeminars: () => setState(() => _navIndex = 1),
+              ),
+              _buildSeminarsTab(allSeminarios),
+              const ProfileScreen(),
+            ],
+          );
+        },
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _navIndex,
+        onDestinationSelected: (index) => setState(() => _navIndex = index),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
+          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Seminarios'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Perfil'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeminarsTab(List<Seminario> allSeminarios) {
+    return Scaffold(
       appBar: AppBar(
-        title: const Text('Ruta de Fe'),
+        title: const Text('Seminarios'),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -252,22 +311,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ],
       ),
-      body: AsyncStreamBuilder<List<Seminario>>(
-        streamFactory: firestore.getSeminarios,
-        loadingMessage: 'Cargando seminarios...',
-        builder: (context, allSeminarios) {
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              _buildSeminarioList(
-                allSeminarios.where((s) => _progressService.getProgress(s.id) > 0).toList(),
-                _progressService,
-                emptyMessage: 'Aún no has empezado ningún seminario',
-              ),
-              _buildSeminarioList(allSeminarios, _progressService),
-            ],
-          );
-        },
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildSeminarioList(
+            allSeminarios.where((s) => _progressService.getProgress(s.id) > 0).toList(),
+            _progressService,
+            emptyMessage: 'Aún no has empezado ningún seminario',
+          ),
+          _buildSeminarioList(allSeminarios, _progressService),
+        ],
       ),
     );
   }
@@ -280,90 +333,99 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (seminarios.isEmpty) {
       return Center(child: Text(emptyMessage));
     }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
+    final columns = AppLayout.seminarColumns(context);
+    final padding = AppLayout.pagePadding(context);
+    if (columns == 1) {
+      return ListView.builder(
+        padding: padding,
+        itemCount: seminarios.length,
+        itemBuilder: (context, index) => FadeSlideIn(
+          delay: AppMotion.staggered(index).inMilliseconds - 280,
+          child: _SeminarioCard(seminario: seminarios[index], progress: progressService.getProgress(seminarios[index].id)),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: padding,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: AppLayout.isWide(context) ? 1.7 : 1.45,
+      ),
       itemCount: seminarios.length,
-      itemBuilder: (context, index) {
-        final s = seminarios[index];
-        final progress = progressService.getProgress(s.id);
+      itemBuilder: (context, index) => FadeSlideIn(
+        delay: AppMotion.staggered(index).inMilliseconds - 280,
+        child: _SeminarioCard(seminario: seminarios[index], progress: progressService.getProgress(seminarios[index].id)),
+      ),
+    );
+  }
+}
 
-        return TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0.0, end: 1.0),
-          duration: Duration(milliseconds: 400 + (index * 80)),
-          curve: Curves.easeOutCubic,
-          builder: (context, value, child) {
-            return Opacity(
-              opacity: value,
-              child: Transform.translate(
-                offset: Offset(0, 20 * (1 - value)),
-                child: child,
-              ),
-            );
-          },
-          child: Card(
-            elevation: 4,
-            shadowColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-            margin: const EdgeInsets.only(bottom: 12),
-            child: InkWell(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => SeminarioDetailScreen(seminario: s)),
-              ),
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+class _SeminarioCard extends StatelessWidget {
+  final Seminario seminario;
+  final double progress;
+  const _SeminarioCard({required this.seminario, required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SeminarioDetailScreen(seminario: seminario)),
+        ),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.menu_book, size: 28, color: colors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.menu_book, size: 32),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(s.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(height: 4),
-                              Text(
-                                s.descripcion,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                              ),
-                            ],
-                          ),
+                        Text(seminario.nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const SizedBox(height: 4),
+                        Text(
+                          seminario.descripcion,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: colors.onSurface.withValues(alpha: 0.68), fontSize: 13),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: Colors.grey[300],
-                      color: Theme.of(context).colorScheme.primary,
-                      minHeight: 6,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${(progress * 100).toStringAsFixed(0)}% completado',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: colors.surfaceContainerHighest,
+                color: colors.primary,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              const SizedBox(height: 6),
+              Text('${(progress * 100).toStringAsFixed(0)}% completado', style: const TextStyle(fontSize: 12)),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

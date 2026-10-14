@@ -1,3 +1,6 @@
+// Cloud Functions has no Windows plugin; Android/iOS builds still resolve this.
+// ignore_for_file: uri_does_not_exist, undefined_identifier
+
 import 'package:cloud_functions/cloud_functions.dart';
 
 class GeminiService {

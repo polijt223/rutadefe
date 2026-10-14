@@ -3,17 +3,30 @@ import '../models/quiz.dart';
 import '../services/gemini_service.dart';
 import '../services/progress_service.dart';
 import '../services/streak_service.dart';
+import '../theme/app_motion.dart';
+import '../widgets/adaptive_body.dart';
 import '../widgets/celebration_dialog.dart';
+
+typedef QuizGrader = Future<Map<String, dynamic>> Function({
+  required String seminarioId,
+  required String seccionId,
+  required String quizId,
+  required String preguntaId,
+  required String respuestaUsuario,
+});
 
 class QuizScreen extends StatefulWidget {
   final Quiz quiz;
   final String seminarioId;
   final int totalSecciones;
+  final QuizGrader? grader;
+
   const QuizScreen({
     super.key,
     required this.quiz,
     required this.seminarioId,
     this.totalSecciones = 1,
+    this.grader,
   });
 
   @override
@@ -31,21 +44,32 @@ class _QuizScreenState extends State<QuizScreen> {
   int? _lastScore;
   final _textController = TextEditingController();
 
+  PreguntaQuiz get _pregunta => widget.quiz.preguntas[_current];
+  bool get _isLast => _current >= widget.quiz.preguntas.length - 1;
+
   Future<void> _checkAnswer(String respuesta) async {
     if (_answered || _grading) return;
-    final pregunta = widget.quiz.preguntas[_current];
+    final trimmed = respuesta.trim();
+    if (trimmed.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe una respuesta antes de enviarla.')),
+      );
+      return;
+    }
+
     setState(() {
       _grading = true;
-      _selected = respuesta;
+      _selected = trimmed;
     });
 
     try {
-      final grade = await GeminiService.corregirRespuesta(
+      final grader = widget.grader ?? GeminiService.corregirRespuesta;
+      final grade = await grader(
         seminarioId: widget.seminarioId,
         seccionId: widget.quiz.seccionId,
         quizId: widget.quiz.id,
-        preguntaId: pregunta.id,
-        respuestaUsuario: respuesta,
+        preguntaId: _pregunta.id,
+        respuestaUsuario: trimmed,
       );
 
       if (!mounted) return;
@@ -58,21 +82,6 @@ class _QuizScreenState extends State<QuizScreen> {
         _feedback = grade['comentario'] as String;
         if (grade['correcta'] == true) _correctas++;
       });
-
-      await Future<void>.delayed(const Duration(milliseconds: 1400));
-      if (!mounted) return;
-      if (_current < widget.quiz.preguntas.length - 1) {
-        setState(() {
-          _current++;
-          _answered = false;
-          _selected = null;
-          _feedback = null;
-          _lastScore = null;
-          _textController.clear();
-        });
-      } else {
-        await _finish();
-      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _grading = false);
@@ -80,6 +89,22 @@ class _QuizScreenState extends State<QuizScreen> {
         SnackBar(content: Text('No se pudo evaluar la respuesta: $error')),
       );
     }
+  }
+
+  Future<void> _continue() async {
+    if (!_answered || _grading) return;
+    if (!_isLast) {
+      setState(() {
+        _current++;
+        _answered = false;
+        _selected = null;
+        _feedback = null;
+        _lastScore = null;
+        _textController.clear();
+      });
+      return;
+    }
+    await _finish();
   }
 
   Future<void> _finish() async {
@@ -101,79 +126,96 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     if (!mounted) return;
-    showCelebration(
+    await showCelebration(
       context,
       'Quiz completado',
       'Nota: $nota/100. Respuestas correctas: $_correctas de ${widget.quiz.preguntas.length}.',
     );
-    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
+  }
+
+  Color _scoreColor(BuildContext context) {
+    final score = _lastScore ?? 0;
+    if (score >= 80) return Colors.green.shade700;
+    if (score >= 50) return Theme.of(context).colorScheme.primary;
+    return Colors.red.shade700;
   }
 
   @override
   Widget build(BuildContext context) {
-    final pregunta = widget.quiz.preguntas[_current];
     final progreso = (_current + 1) / widget.quiz.preguntas.length;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.quiz.titulo)),
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: Padding(
+      body: AdaptiveBody(
+        maxWidth: 720,
+        child: AnimatedSwitcher(
+        duration: AppMotion.medium,
+        child: SingleChildScrollView(
           key: ValueKey(_current),
-          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              LinearProgressIndicator(value: progreso),
+              LinearProgressIndicator(value: progreso, minHeight: 8),
               const SizedBox(height: 8),
               Text('Pregunta ${_current + 1} de ${widget.quiz.preguntas.length}'),
               const SizedBox(height: 24),
               Text(
-                pregunta.enunciado,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                _pregunta.enunciado,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 24),
-              if (pregunta.tipo == 'multiple')
-                ...pregunta.opciones.map((op) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: _answered && op == _selected
-                              ? (_lastScore == 100 ? Colors.green : Colors.red)
-                              : null,
-                          minimumSize: const Size(double.infinity, 48),
-                        ),
-                        onPressed: _answered || _grading
-                            ? null
-                            : () {
-                                setState(() => _selected = op);
-                                _checkAnswer(op);
-                              },
-                        child: Text(op),
+              if (_pregunta.tipo == 'multiple')
+                ..._pregunta.opciones.map((op) {
+                  final selected = op == _selected;
+                  Color? background;
+                  if (_answered && selected) {
+                    background = (_lastScore == 100) ? Colors.green : Colors.red;
+                  } else if (selected && _grading) {
+                    background = colors.primaryContainer;
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: background,
+                        minimumSize: const Size(double.infinity, 48),
                       ),
-                    ))
+                      onPressed: _answered || _grading ? null : () => _checkAnswer(op),
+                      child: Text(op),
+                    ),
+                  );
+                })
               else
                 Column(
                   children: [
                     TextField(
                       controller: _textController,
                       readOnly: _answered || _grading,
+                      minLines: 3,
+                      maxLines: 6,
+                      textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
-                        hintText: 'Escribe tu respuesta',
+                        hintText: 'Escribe tu respuesta con tus palabras',
                         border: OutlineInputBorder(),
                       ),
-                      onSubmitted: _answered || _grading ? null : _checkAnswer,
                     ),
                     const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: _answered || _grading ? null : () => _checkAnswer(_textController.text),
-                      child: _grading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Comprobar'),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _answered || _grading
+                            ? null
+                            : () => _checkAnswer(_textController.text),
+                        child: _grading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('Enviar respuesta'),
+                      ),
                     ),
                   ],
                 ),
@@ -183,14 +225,34 @@ class _QuizScreenState extends State<QuizScreen> {
               ],
               if (_answered) ...[
                 const SizedBox(height: 16),
-                Text('Puntuación: $_lastScore/100'),
                 Text(
-                  _feedback ?? pregunta.explicacion ?? '',
-                  style: TextStyle(color: Colors.grey[700], fontStyle: FontStyle.italic),
+                  'Puntuación: $_lastScore/100',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: _scoreColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _feedback ?? _pregunta.explicacion ?? '',
+                  style: TextStyle(
+                    color: colors.onSurface.withValues(alpha: 0.8),
+                    fontStyle: FontStyle.italic,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _continue,
+                    child: Text(_isLast ? 'Ver resultado' : 'Siguiente pregunta'),
+                  ),
                 ),
               ],
             ],
           ),
+        ),
         ),
       ),
     );

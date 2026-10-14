@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'user_progress_screen.dart';
 import 'upload_file_screen.dart';
+import 'admin_lock_ads_screen.dart';
+import '../services/quiz_admin_service.dart';
 import '../widgets/async_stream_builder.dart';
 
 class AdminScreen extends StatelessWidget {
@@ -49,6 +50,12 @@ class AdminScreen extends StatelessWidget {
             title: 'Mini-reflexiones',
             subtitle: 'Bolsa de notificaciones por seminario',
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageReflexionesScreen())),
+          ),
+          _AdminTile(
+            icon: Icons.lock_open_outlined,
+            title: 'Anuncios de bloqueo',
+            subtitle: 'Reflexiones e imágenes para la pantalla de bloqueo',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminLockAdsScreen())),
           ),
           _AdminTile(
             icon: Icons.workspace_premium,
@@ -442,10 +449,8 @@ class _MigrateQuizKeysScreenState extends State<MigrateQuizKeysScreen> {
   Future<void> _migrate() async {
     setState(() => _migrating = true);
     try {
-      final result = await FirebaseFunctions.instance
-          .httpsCallable('migrateQuizAnswerKeys')
-          .call<Map<String, dynamic>>();
-      if (mounted) setState(() => _migrated = result.data['migrated'] as int? ?? 0);
+      final migrated = await QuizAdminService().migrateAnswerKeys();
+      if (mounted) setState(() => _migrated = migrated);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

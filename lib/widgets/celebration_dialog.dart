@@ -57,8 +57,8 @@ class _CelebrationDialogState extends State<CelebrationDialog>
   }
 }
 
-void showCelebration(BuildContext context, String title, String message) {
-  showDialog(
+Future<void> showCelebration(BuildContext context, String title, String message) {
+  return showDialog(
     context: context,
     builder: (_) => CelebrationDialog(title: title, message: message),
   );

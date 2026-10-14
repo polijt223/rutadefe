@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../theme/app_motion.dart';
+import '../widgets/adaptive_body.dart';
+import '../widgets/brand_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onCompleted;
@@ -40,9 +43,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: SafeArea(
-        child: Column(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(dark ? 'assets/home/bg_dark.jpg' : 'assets/home/bg_light.jpg'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: SafeArea(
+        child: AdaptiveBody(
+          maxWidth: 560,
+          child: Column(
           children: [
             Expanded(
               child: PageView.builder(
@@ -56,14 +70,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 _pages.length,
-                (i) => Container(
+                (i) => AnimatedContainer(
+                  duration: AppMotion.fast,
+                  curve: AppMotion.emphasized,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
                   width: _page == i ? 24 : 8,
                   height: 8,
                   decoration: BoxDecoration(
-                    color: _page == i
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.grey[400],
+                    color: _page == i ? colors.primary : colors.outline,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -78,8 +92,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   onPressed: _page == _pages.length - 1
                       ? _finish
                       : () => _controller.nextPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
+                            duration: AppMotion.medium,
+                            curve: AppMotion.emphasized,
                           ),
                   child: Text(_page == _pages.length - 1 ? 'Comenzar' : 'Siguiente'),
                 ),
@@ -87,6 +101,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             const SizedBox(height: 32),
           ],
+        ),
+        ),
         ),
       ),
     );
@@ -110,7 +126,10 @@ class _OnboardingPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 100, color: Theme.of(context).colorScheme.primary),
+          if (icon == Icons.route)
+            const BrandLogo(height: 160)
+          else
+            Icon(icon, size: 100, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 32),
           Text(title, style: Theme.of(context).textTheme.headlineSmall, textAlign: TextAlign.center),
           const SizedBox(height: 16),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../widgets/adaptive_body.dart';
+import '../widgets/brand_logo.dart';
+import '../widgets/fade_slide_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -67,50 +70,65 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo placeholder - reemplazar con el logo real
-              const Icon(Icons.route, size: 80, color: Color(0xFF8B1E3F)),
-              const SizedBox(height: 16),
-              Text(
-                'Ruta de Fe',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              const Text('Tu camino espiritual diario'),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _isSigningIn ? null : _signInWithGoogle,
-                  icon: _isSigningIn
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.login),
-                  label: Text(_isSigningIn ? 'Conectando...' : 'Continuar con Google'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: _isSigningIn ? null : _signInWithX,
-                  icon: const Icon(Icons.alternate_email),
-                  label: const Text('Continuar con X'),
-                ),
-              ),
-            ],
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(dark ? 'assets/home/bg_dark.jpg' : 'assets/home/bg_light.jpg'),
+            fit: BoxFit.cover,
           ),
+        ),
+        child: SafeArea(
+        child: AdaptiveBody(
+          maxWidth: 480,
+          alignment: Alignment.center,
+          child: FadeSlideIn(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const BrandLogo(height: 148),
+                const SizedBox(height: 16),
+                Text(
+                  'Ruta de Fe',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tu camino espiritual diario',
+                  style: TextStyle(color: colors.onSurface.withValues(alpha: 0.72)),
+                ),
+                const SizedBox(height: 48),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSigningIn ? null : _signInWithGoogle,
+                    icon: _isSigningIn
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.login),
+                    label: Text(_isSigningIn ? 'Conectando...' : 'Continuar con Google'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _isSigningIn ? null : _signInWithX,
+                    icon: const Icon(Icons.alternate_email),
+                    label: const Text('Continuar con X'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
         ),
       ),
     );

@@ -1,3 +1,6 @@
+// file_picker's analyzer resolution fails on some Windows SDK setups.
+// ignore_for_file: uri_does_not_exist, undefined_identifier
+
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';

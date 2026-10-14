@@ -97,7 +97,11 @@ service cloud.firestore {
       match /progreso/{seminarioId} {
         allow read: if isOwner(userId) || isAdmin();
         allow create, update: if isOwner(userId)
-          && request.resource.data.keys().hasOnly(['seccionesCompletadas', 'progreso', 'totalSecciones', 'updatedAt']);
+          && request.resource.data.keys().hasOnly(['seccionesCompletadas', 'progreso', 'totalSecciones', 'updatedAt'])
+          && request.resource.data.seccionesCompletadas is list
+          && request.resource.data.progreso is number
+          && request.resource.data.progreso >= 0
+          && request.resource.data.progreso <= 1;
         allow delete: if isOwner(userId) || isAdmin();
       }
 
@@ -112,6 +116,11 @@ service cloud.firestore {
         && request.resource.data.uid == userId
         && request.resource.data.keys().hasOnly(['uid', 'displayName', 'photoUrl']);
       allow delete: if isAdmin();
+    }
+
+    match /anunciosBloqueo/{anuncioId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     match /codigosAmigo/{code} {

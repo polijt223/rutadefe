@@ -133,6 +133,7 @@ class _SearchScreenState extends State<SearchScreen> {
           decoration: const InputDecoration(
             hintText: 'Buscar...',
             border: InputBorder.none,
+            filled: false,
           ),
           onChanged: _search,
         ),

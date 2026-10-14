@@ -5,7 +5,9 @@ import '../services/progress_service.dart';
 import '../services/streak_service.dart';
 import '../services/theme_service.dart';
 import 'package:provider/provider.dart';
+import '../widgets/adaptive_body.dart';
 import '../widgets/fade_slide_in.dart';
+import 'lock_ads_settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -82,6 +84,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Mi Perfil'),
         actions: [
           IconButton(
@@ -92,11 +95,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: FadeSlideIn(
-        child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+        child: AdaptiveBody(
+        maxWidth: 560,
+        child: ListView(
           children: [
-            CircleAvatar(
+            Center(
+              child: CircleAvatar(
               radius: 50,
               backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
               child: Text(
@@ -105,21 +109,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     : 'U',
                 style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
               ),
+              ),
             ),
             const SizedBox(height: 16),
             Text(
               _user?.displayName ?? 'Usuario',
+              textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            Text(_user?.email ?? '', style: const TextStyle(color: Colors.grey)),
+            Text(
+              _user?.email ?? '',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
+            ),
             const SizedBox(height: 24),
-            SwitchListTile(
-              title: const Text('Modo oscuro'),
-              value: context.watch<ThemeService>().themeMode == ThemeMode.dark,
-              onChanged: (v) {
-                context.read<ThemeService>().setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+            Text('Apariencia', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            SegmentedButton<ThemeMode>(
+              segments: const [
+                ButtonSegment(value: ThemeMode.system, label: Text('Auto'), icon: Icon(Icons.brightness_auto)),
+                ButtonSegment(value: ThemeMode.light, label: Text('Claro'), icon: Icon(Icons.light_mode)),
+                ButtonSegment(value: ThemeMode.dark, label: Text('Oscuro'), icon: Icon(Icons.dark_mode)),
+              ],
+              selected: {context.watch<ThemeService>().themeMode},
+              onSelectionChanged: (selected) {
+                context.read<ThemeService>().setThemeMode(selected.first);
               },
             ),
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.lock_open_outlined, color: Theme.of(context).colorScheme.primary),
+                title: const Text('Pantalla de bloqueo'),
+                subtitle: const Text('Reflexiones al desbloquear el teléfono'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LockAdsSettingsScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             _StatCard(
               icon: Icons.local_fire_department,
               label: 'Racha actual',

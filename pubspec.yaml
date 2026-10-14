@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -36,8 +36,34 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/brand/launcher.png
+  adaptive_icon_background: "#070707"
+  adaptive_icon_foreground: assets/brand/launcher.png
+  adaptive_icon_foreground_inset: 18
+  remove_alpha_ios: true
+  background_color_ios: "#070707"
+  web:
+    generate: true
+    image_path: assets/brand/launcher.png
+    background_color: "#070707"
+    theme_color: "#5C6B32"
+  windows:
+    generate: true
+    image_path: assets/brand/launcher.png
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: assets/brand/launcher.png
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/brand/
+    - assets/home/
 dependency_overrides:
   flutter_inappwebview_android: 1.1.3
