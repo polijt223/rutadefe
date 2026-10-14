@@ -13,7 +13,7 @@
 			"android": {
 				"default": {
 					"projectId": "ruta-de-fe",
-					"appId": "1:529902740257:android:281954d38257bd78db9460",
+					"appId": "1:529902740257:android:ad2dff1764ec4b67db9460",
 					"fileOutput": "android/app/google-services.json"
 				}
 			},
@@ -21,7 +21,7 @@
 				"lib/firebase_options.dart": {
 					"projectId": "ruta-de-fe",
 					"configurations": {
-						"android": "1:529902740257:android:281954d38257bd78db9460",
+						"android": "1:529902740257:android:ad2dff1764ec4b67db9460",
 						"ios": "1:529902740257:ios:2911ccdc39ec6611db9460",
 						"macos": "1:529902740257:ios:2911ccdc39ec6611db9460",
 						"web": "1:529902740257:web:ed063772d5f7c09fdb9460",

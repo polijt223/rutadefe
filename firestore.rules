@@ -123,6 +123,10 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /_geminiDailyUsage/{userId} {
+      allow read, write: if false;
+    }
+
     match /codigosAmigo/{code} {
       allow get: if signedIn();
       allow list: if false;

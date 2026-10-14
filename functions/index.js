@@ -197,7 +197,11 @@ exports.migrateQuizAnswerKeys = onCall({ maxInstances: 1 }, async (request) => {
  * Desplegar con: firebase deploy --only functions
  * Programar en Cloud Scheduler o usar functions.pubsub.schedule
  */
-exports.sendScheduledReflections = onSchedule('every 60 minutes', async (event) => {
+exports.sendScheduledReflections = onSchedule({
+  schedule: 'every 60 minutes',
+  timeZone: 'America/Argentina/Buenos_Aires',
+  retryCount: 0,
+}, async () => {
     const usersSnap = await db.collection('usuarios').get();
 
     for (const userDoc of usersSnap.docs) {

@@ -53,8 +53,17 @@ class MessagingService {
     }, SetOptions(merge: true));
     await FirebaseFirestore.instance.collection('codigosAmigo').doc(friendCode).set({'uid': user.uid});
 
-    final settings = await FirebaseMessaging.instance.requestPermission();
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) await _saveToken(user.uid, token);

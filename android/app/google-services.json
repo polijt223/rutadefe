@@ -48,6 +48,58 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:529902740257:android:ad2dff1764ec4b67db9460",
+        "android_client_info": {
+          "package_name": "com.rutadefe.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "529902740257-hlg7ssl9jmr6jkpif3vov8c54mmdvj5p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rutadefe.app",
+            "certificate_hash": "34d0db0cb7e1802ff20d327b3e340463e28faed9"
+          }
+        },
+        {
+          "client_id": "529902740257-sq163m6goli08d70denu9ksk4cq0n1im.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rutadefe.app",
+            "certificate_hash": "0c08a9247a8dbd34963e93bbbef6e612d64a2432"
+          }
+        },
+        {
+          "client_id": "529902740257-ub3niaq684djnu0c74hscl46f79vt02j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_hU8Uao00I3Ucq68T1eNz40WFvFYELyI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "529902740257-ub3niaq684djnu0c74hscl46f79vt02j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "529902740257-29c8cijuldadm3f0r3iahi4l40v5jkr5.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.rutadefe"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"
